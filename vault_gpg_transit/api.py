@@ -10,6 +10,7 @@ from .exceptions import UnsupportedParam
 
 DEFAULT_MOUNT_POINT = 'vault-gpg-plugin'
 
+# https://github.com/hvac/hvac/blob/183051f4cf6eeec7c3c813f5f4eb20f01ba611f1/hvac/api/secrets_engines/transit.py
 class OpenPGP(Transit):
     """Transit-Secrets-Engine-like (API).
     Reference: https://hvac.readthedocs.io/en/stable/usage/secrets_engines/transit.html
@@ -17,14 +18,53 @@ class OpenPGP(Transit):
 
     # TODO: Name, comment, email.
     def create_key(self, name, convergent_encryption=None, derived=None, exportable=None, allow_plaintext_backup=None,
-                   key_type=None, mount_point=DEFAULT_MOUNT_POINT):
+                   key_type=None, real_name=None, email=None, comment=None, mount_point=DEFAULT_MOUNT_POINT):
+        """Create a new named encryption key of the specified type.
+
+        The values set here cannot be changed after key creation.
+
+        Supported methods:
+            POST: /{mount_point}/keys/{name}. Produces: 204 (empty body)
+
+        :param name: Specifies the name of the encryption key to create. This is specified as part of the URL.
+        :type name: str | unicode
+
+        :param convergent_encryption: If enabled, the key will support convergent encryption, where the same plaintext
+            creates the same ciphertext. This requires derived to be set to true. When enabled, each
+            encryption(/decryption/rewrap/datakey) operation will derive a nonce value rather than randomly generate it.
+            Not supported at the time of writing.
+        :type convergent_encryption: bool
+
+        :param derived: Specifies if key derivation is to be used. If enabled, all encrypt/decrypt requests to this
+            named key must provide a context which is used for key derivation. Not supported at the time of writing.
+        :type derived: bool
+
+        :param exportable: Enables keys to be exportable. This allows for all the valid keys in the key ring to be
+            exported. Once set, this cannot be disabled.
+        :type exportable: bool
+
+        :param allow_plaintext_backup: If set, enables taking backup of named key in the plaintext format. Once set,
+            this cannot be disabled.
+        :type allow_plaintext_backup: bool
+
+        :param key_type: Specifies the type of key to create. The currently-supported types are:
+            * **rsa-2048**: RSA with bit size of 2048 (asymmetric)
+            * **rsa-3072**: RSA with bit size of 3072 (asymmetric)
+            * **rsa-4096**: RSA with bit size of 4096 (asymmetric)
+        :type key_type: str | unicode
+
+        :param mount_point: The "path" the method/backend was mounted on.
+        :type mount_point: str | unicode
+
+        :return: The response of the request.
+
+        :rtype: requests.Response
+        """
         # Unsupported parameters. 
         if convergent_encryption:
             raise UnsupportedParam('convergent encryption not supported')
         if derived:
             raise UnsupportedParam('key derivation not supported')
-        if exportable:
-            raise UnsupportedParam('exportable keys not supported')
         if allow_plaintext_backup:
             raise UnsupportedParam('plaintext key backups not supported')
 
@@ -39,15 +79,15 @@ class OpenPGP(Transit):
         # JSON parameters to the plugin.
         # Note: we ignore the key-type, as we assume only RSA keys.
         _, key_bits = key_type.split('-')
-        params = {
-            'comment': '',
-            'email': '',
-            'exportable': False,
+        params = utils.remove_nones({
+            'comment': comment,
+            'email': email,
+            'exportable': exportable,
             'generate': True,
             'key_bits': key_bits,
             'name': name,
-            'real_name': '',
-        }
+            'real_name': real_name,
+        })
 
         # The actual call to the plugin.
         api_path = utils.format_url(

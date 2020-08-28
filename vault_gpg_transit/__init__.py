@@ -4,10 +4,12 @@ from hvac.api.secrets_engines import SecretsEngines as VaultSecretsEngines
 
 from .api import OpenPGP
 
+# https://github.com/hvac/hvac/blob/183051f4cf6eeec7c3c813f5f4eb20f01ba611f1/hvac/api/secrets_engines/__init__.py
 class SecretsEngines(VaultSecretsEngines):
 
     implemented_classes = VaultSecretsEngines.implemented_classes + [OpenPGP]
 
+# https://github.com/hvac/hvac/blob/183051f4cf6eeec7c3c813f5f4eb20f01ba611f1/hvac/v1/__init__.py
 class Client(VaultClient):
 
     def __init__(self, url=None, token=None,
@@ -24,6 +26,7 @@ class Client(VaultClient):
     def secrets(self):
         return self._secrets
 
+# # https://github.com/hvac/hvac/blob/183051f4cf6eeec7c3c813f5f4eb20f01ba611f1/hvac/__init__.py
 __all__ = (
     'Client',
 )

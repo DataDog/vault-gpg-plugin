@@ -20,18 +20,26 @@ class TestOpenPGP(unittest.TestCase):
     name = 'test-key'
 
     # Unsupported parameters.
-    self.assertRaises(UnsupportedParam, self.c.secrets.openpgp.create_key, name, allow_plaintext_backup=True)
-    self.assertRaises(UnsupportedParam, self.c.secrets.openpgp.create_key, name, convergent_encryption=True)
-    self.assertRaises(UnsupportedParam, self.c.secrets.openpgp.create_key, name, derived=True)
-    self.assertRaises(UnsupportedParam, self.c.secrets.openpgp.create_key, name, exportable=True)
+    self.assertRaises(UnsupportedParam, self.c.secrets.openpgp.create_key,
+                      name, allow_plaintext_backup=True)
+    self.assertRaises(UnsupportedParam, self.c.secrets.openpgp.create_key,
+                      name, convergent_encryption=True)
+    self.assertRaises(UnsupportedParam, self.c.secrets.openpgp.create_key,
+                      name, derived=True)
 
     # No key type.
     self.assertRaises(ParamValidationError, self.c.secrets.openpgp.create_key, name)
 
-    # Allowed key types.
+    # Allowed key types, exportable values, real names, and email addresses.
     for key_type in ALLOWED_KEY_TYPES:
-      r = self.c.secrets.openpgp.create_key(name, key_type=key_type)
-      r.raise_for_status()
+      for exportable in (None, False, True):
+        for real_name in (None, 'John Doe'):
+          for email in (None, 'john.doe@datadoghq.com'):
+            r = self.c.secrets.openpgp.create_key(name, key_type=key_type,
+                                                  exportable=exportable,
+                                                  real_name=real_name,
+                                                  email=email)
+            r.raise_for_status()
 
   def tearDown(self):
     pass

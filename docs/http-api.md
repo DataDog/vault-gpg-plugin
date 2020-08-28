@@ -3,7 +3,17 @@
 It is assumed the GPG backend is mounted at the `/gpg` path in Vault.
 Since it is possible to mount secret backends at any location, please update your API calls accordingly.
 
-## Create key
+* [Create Key](#create-key)
+* [Read Key](#read-key)
+* [List Keys](#list-keys)
+* [Delete Key](#delete-key)
+* [Export Key](#export-key)
+* [Decrypt Data](#decrypt-data)
+* [Sign Data](#sign-data)
+* [Verify Signed Data](#verify-signed-data)
+* [Show Session Key](#show-session-key)
+
+## Create Key
 
 This endpoint creates a new named GPG key.
 
@@ -67,7 +77,7 @@ $ curl \
     https://vault.example.com/v1/gpg/keys/my-imported-key
 ```
 
-## Read key
+## Read Key
 
 This endpoint returns information about a named GPG key.
 
@@ -100,7 +110,7 @@ $ curl \
 }
 ```
 
-## List keys
+## List Keys
 
 This endpoint returns a list of keys. Only the key names are returned.
 
@@ -127,7 +137,7 @@ $ curl \
 }
 ```
 
-## Delete key
+## Delete Key
 
 This endpoint deletes a named GPG key.
 
@@ -148,7 +158,7 @@ $ curl \
     https://vault.example.com/v1/gpg/keys/my-key
 ```
 
-## Export key
+## Export Key
 
 This endpoint returns the named GPG key ASCII-armored.
 The key must be exportable to support this operation.
@@ -181,7 +191,7 @@ $ curl \
 }
 ```
 
-## Sign data
+## Sign Data
 
 This endpoint returns the signature of the given data using the
 named GPG key and the specified hash algorithm.
@@ -238,7 +248,7 @@ $ curl \
 }
 ```
 
-## Verify signed data
+## Verify Signed Data
 
 
 This endpoint returns whether the provided signature is valid for the given data.
@@ -292,7 +302,7 @@ $ curl \
 }
 ```
 
-## Decrypt data
+## Decrypt Data
 
 This endpoint decrypts the provided ciphertext using the named GPG key.
 
