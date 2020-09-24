@@ -430,13 +430,16 @@ This endpoint creates, under the given master key, a new subkey with the specifi
 
 - `key_bits` `(int: 4096)` – Specifies the number of bits of the generated subkey to use.
 
+- `expires` `(int: 0)` – Specifies the number of seconds from the creation time (now) after which the subkey expires. If the number is zero, then the subkey never expires.
+
 #### Sample Payload
 
 ```json
 {
   "key_type": "rsa",
   "capabilities": ["sign"],
-  "key_bits": 4096
+  "key_bits": 4096,
+  "expires": 0
 }
 ```
 
@@ -489,7 +492,8 @@ $ curl \
 {
   "key_type": "rsa",
   "capabilities": ["sign"],
-  "key_bits": 4096
+  "key_bits": 4096,
+  "expires": 0
 }
 ```
 
@@ -571,6 +575,8 @@ This endpoint returns the signature of the given data using the given subkey ass
     - `ascii-armor`
 
 - `input` `(string: <required>)` – Specifies the **base64 encoded** input data.
+
+- `expires` `(int: 0)` – Specifies the number of seconds from the creation time (now) after which the signature expires. If the number is zero, then the signature never expires.
 
 #### Sample payload
 
