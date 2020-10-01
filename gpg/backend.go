@@ -24,6 +24,7 @@ func Backend() *backend {
 		Help: backendHelp,
 		Paths: []*framework.Path{
 			pathKeys(&b),
+			pathSubkeys(&b),
 			pathListKeys(&b),
 			pathExportKeys(&b),
 			pathSign(&b),

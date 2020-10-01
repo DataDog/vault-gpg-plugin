@@ -414,11 +414,11 @@ $ curl \
 
 ### Create Subkey
 
-This endpoint creates, under the given master key, a new subkey with the specified key type, capabilities, as well as size, and returns the Key ID of this new subkey.
+This endpoint creates, under the given master key, a new subkey with the specified key type, capabilities, as well as size, and returns the Key ID of the public key of this new subkey.
 
-| Method | Path                       | Produces           |
-| :------| :-----------------------   | :----------------- |
-| `POST` | `/gpg/keys/:name/subkeys/` | `204 (empty body)` |
+| Method | Path                       | Produces               |
+| :------| :-----------------------   | :--------------------- |
+| `POST` | `/gpg/keys/:name/subkeys/` | `200 application/json` |
 
 #### Parameters
 
@@ -428,9 +428,9 @@ This endpoint creates, under the given master key, a new subkey with the specifi
 
 - `capabilities` `([...]string: ["sign"])` – Specifies the capabilities of the subkey. Supported capabilities (depending on the `key_type`) are: `sign`.
 
-- `key_bits` `(int: 4096)` – Specifies the number of bits of the generated subkey to use.
+- `key_bits` `(int: 4096)` – Specifies the number of bits of the generated subkey.
 
-- `expires` `(int: 0)` – Specifies the number of seconds from the creation time (now) after which the subkey expires. If the number is zero, then the subkey never expires.
+- `expires` `(int: 31536000)` – Specifies the number of seconds from the creation time (now) after which the subkey expires. If the number is zero, then the subkey never expires.
 
 #### Sample Payload
 
@@ -439,7 +439,7 @@ This endpoint creates, under the given master key, a new subkey with the specifi
   "key_type": "rsa",
   "capabilities": ["sign"],
   "key_bits": 4096,
-  "expires": 0
+  "expires": 31536000
 }
 ```
 
@@ -493,13 +493,13 @@ $ curl \
   "key_type": "rsa",
   "capabilities": ["sign"],
   "key_bits": 4096,
-  "expires": 0
+  "expires": 31536000
 }
 ```
 
 ### List Subkeys
 
-This endpoint returns a list of subkeys associated with the GPG master key with the given name. Only Key IDs are returned.
+This endpoint returns a list of subkeys associated with the GPG master key with the given name. Only Key IDs of public keys of subkeys are returned.
 
 | Method | Path                       | Produces               |
 | :----- | :------------------------- | :--------------------- |
@@ -576,7 +576,7 @@ This endpoint returns the signature of the given data using the given subkey ass
 
 - `input` `(string: <required>)` – Specifies the **base64 encoded** input data.
 
-- `expires` `(int: 0)` – Specifies the number of seconds from the creation time (now) after which the signature expires. If the number is zero, then the signature never expires.
+- `expires` `(int: 31536000)` – Specifies the number of seconds from the creation time (now) after which the signature expires. If the number is zero, then the signature never expires.
 
 #### Sample payload
 
