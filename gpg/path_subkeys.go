@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rsa"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"reflect"
@@ -92,16 +93,12 @@ func (b *backend) pathSubkeyCreate(ctx context.Context, req *logical.Request, da
 		return logical.ErrorResponse("capabilities other than signing are not yet supported: " + fmt.Sprintf("%v", capabilities)), nil
 	}
 
-	prevKeyEntry, err := b.key(ctx, req.Storage, name)
+	entity, exportable, err := b.readKey(ctx, req.Storage, name)
 	if err != nil {
-		return logical.ErrorResponse("master key could not be read"), err
+		return nil, err
 	}
-	if prevKeyEntry == nil {
+	if entity == nil {
 		return logical.ErrorResponse("master key does not exist"), nil
-	}
-	entity, err := b.entity(prevKeyEntry)
-	if err != nil {
-		return logical.ErrorResponse("master key could not be parsed"), err
 	}
 
 	config := packet.Config{
@@ -155,7 +152,7 @@ func (b *backend) pathSubkeyCreate(ctx context.Context, req *logical.Request, da
 	}
 	currStorageEntry, err := logical.StorageEntryJSON("key/"+name, &keyEntry{
 		SerializedKey: buf.Bytes(),
-		Exportable:    prevKeyEntry.Exportable,
+		Exportable:    exportable,
 	})
 	if err != nil {
 		return nil, err
@@ -166,7 +163,7 @@ func (b *backend) pathSubkeyCreate(ctx context.Context, req *logical.Request, da
 
 	return &logical.Response{
 		Data: map[string]interface{}{
-			"key_id": hex.EncodeToString(subkey.PublicKey.Fingerprint[:]),
+			"key_id": subkey.PublicKey.KeyIdString(),
 		},
 	}, nil
 }
@@ -180,5 +177,59 @@ func (b *backend) pathSubkeyList(ctx context.Context, req *logical.Request, data
 }
 
 func (b *backend) pathSubkeyRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	return logical.ErrorResponse("not implemented"), nil
+	name := data.Get("name").(string)
+	x := data.Get("key_id").(string)
+	fingerprint, err := hex.DecodeString(x)
+	if err != nil {
+		return logical.ErrorResponse("could not hex decode KeyID %s", x), err
+	}
+	keyID := binary.BigEndian.Uint64(fingerprint)
+
+	entity, _, err := b.readKey(ctx, req.Storage, name)
+	if err != nil {
+		return nil, err
+	}
+	if entity == nil {
+		return logical.ErrorResponse("master key does not exist"), nil
+	}
+
+	var el openpgp.EntityList
+	el = append(el, entity)
+	keys := el.KeysById(keyID)
+	if len(keys) != 1 {
+		return logical.ErrorResponse("there are %v != 1 subkeys", len(keys)), nil
+	}
+	subkey := keys[0]
+	if subkey.PrivateKey.IsSubkey != true || subkey.PublicKey.IsSubkey != true {
+		return logical.ErrorResponse("KeyID %v does not correspond to a subkey", keyID), nil
+	}
+
+	var keyType string
+	var keyBits int
+	switch subkey.PublicKey.PubKeyAlgo {
+	case packet.PubKeyAlgoRSA:
+		keyType = "rsa"
+		keyBits = subkey.PublicKey.PublicKey.(*rsa.PublicKey).Size() * 8
+	default:
+		return logical.ErrorResponse("unknown subkey type: %v", subkey.PublicKey.PubKeyAlgo), nil
+	}
+
+	capabilities := []string{}
+	if subkey.SelfSignature.FlagsValid {
+		if subkey.SelfSignature.FlagSign {
+			capabilities = append(capabilities, "sign")
+		}
+		if subkey.SelfSignature.FlagEncryptCommunications || subkey.SelfSignature.FlagEncryptStorage {
+			capabilities = append(capabilities, "encrypt")
+		}
+	}
+
+	return &logical.Response{
+		Data: map[string]interface{}{
+			"key_type":     keyType,
+			"capabilities": capabilities,
+			"key_bits":     keyBits,
+			"expires":      subkey.SelfSignature.KeyLifetimeSecs,
+		},
+	}, nil
 }
