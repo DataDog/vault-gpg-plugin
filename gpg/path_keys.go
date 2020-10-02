@@ -212,12 +212,12 @@ func (b *backend) pathKeyCreate(ctx context.Context, req *logical.Request, data 
 	lock.Lock()
 	defer lock.Unlock()
 
-	resp, err := b.pathKeyRead(ctx, req, data)
+	entity, exportable, err := b.readKey(ctx, req.Storage, name)
 	if err != nil {
-		return logical.ErrorResponse(err.Error()), nil
+		return nil, err
 	}
-	if resp != nil {
-		return logical.ErrorResponse("key already exists"), nil
+	if entity != nil {
+		return logical.ErrorResponse("master key already exists"), nil
 	}
 
 	var buf bytes.Buffer
