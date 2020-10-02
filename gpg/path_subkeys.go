@@ -15,18 +15,9 @@ import (
 	"golang.org/x/crypto/openpgp/packet"
 )
 
-const (
-	pathSubkeysHelpSynopsis    = "Manage subkeys under master keys"
-	pathSubkeysHelpDescription = `
-This path is used to manage subkeys under existing master keys.
-Doing a write with no value against an existing master key will create
-by default a new, randomly-generated signing subkey.
-`
-)
-
-func pathSubkeys(b *backend) *framework.Path {
+func pathSubkeysRD(b *backend) *framework.Path {
 	return &framework.Path{
-		Pattern: "keys/" + framework.GenericNameRegex("name") + "/subkeys" + framework.OptionalParamRegex("key_id"),
+		Pattern: "keys/" + framework.GenericNameRegex("name") + "/subkeys/" + framework.GenericNameRegex("key_id"),
 		Fields: map[string]*framework.FieldSchema{
 			"name": {
 				Type:        framework.TypeString,
@@ -34,7 +25,31 @@ func pathSubkeys(b *backend) *framework.Path {
 			},
 			"key_id": {
 				Type:        framework.TypeString,
+				Default:     "",
 				Description: "The Key ID of the subkey.",
+			},
+		},
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: b.pathSubkeyDelete,
+			},
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathSubkeyRead,
+			},
+		},
+		HelpSynopsis:    "Read and delete the given subkey under the given master key",
+		HelpDescription: "This path is used to read and delete the given subkey under the given master key.",
+	}
+}
+
+func pathSubkeysCL(b *backend) *framework.Path {
+	return &framework.Path{
+		// The "/?" is there at the end to handle libraries that may add it.
+		Pattern: "keys/" + framework.GenericNameRegex("name") + "/subkeys/?$",
+		Fields: map[string]*framework.FieldSchema{
+			"name": {
+				Type:        framework.TypeString,
+				Description: "The name of the master key with which to associate the new subkey.",
 			},
 			"key_type": {
 				Type:        framework.TypeLowerCaseString,
@@ -43,7 +58,7 @@ func pathSubkeys(b *backend) *framework.Path {
 			},
 			"capabilities": {
 				Type:        framework.TypeCommaStringSlice,
-				Default:     [...]string{"sign"},
+				Default:     []string{"sign"},
 				Description: "The capabilities of the subkey.",
 			},
 			"key_bits": {
@@ -58,21 +73,16 @@ func pathSubkeys(b *backend) *framework.Path {
 			},
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{
-			logical.DeleteOperation: &framework.PathOperation{
-				Callback: b.pathSubkeyDelete,
-			},
 			logical.ListOperation: &framework.PathOperation{
 				Callback: b.pathSubkeyList,
-			},
-			logical.ReadOperation: &framework.PathOperation{
-				Callback: b.pathSubkeyRead,
 			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathSubkeyCreate,
 			},
 		},
-		HelpSynopsis:    pathSubkeysHelpSynopsis,
-		HelpDescription: pathSubkeysHelpDescription,
+		HelpSynopsis: "Create and list subkeys under the given master key",
+		HelpDescription: `This path is used to create and list subkeys under the given master key.
+Doing a write with no value against an existing master key will create by default a new, randomly-generated signing subkey.`,
 	}
 }
 
@@ -173,15 +183,34 @@ func (b *backend) pathSubkeyDelete(ctx context.Context, req *logical.Request, da
 }
 
 func (b *backend) pathSubkeyList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	return logical.ErrorResponse("not implemented"), nil
+	name := data.Get("name").(string)
+
+	entity, _, err := b.readKey(ctx, req.Storage, name)
+	if err != nil {
+		return nil, err
+	}
+	if entity == nil {
+		return logical.ErrorResponse("master key does not exist"), nil
+	}
+
+	keyIDs := []string{}
+	for _, subkey := range entity.Subkeys {
+		keyIDs = append(keyIDs, subkey.PublicKey.KeyIdString())
+	}
+
+	return &logical.Response{
+		Data: map[string]interface{}{
+			"key_ids": keyIDs,
+		},
+	}, nil
 }
 
 func (b *backend) pathSubkeyRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	name := data.Get("name").(string)
-	x := data.Get("key_id").(string)
-	fingerprint, err := hex.DecodeString(x)
+	fingerprintHex := data.Get("key_id").(string)
+	fingerprint, err := hex.DecodeString(fingerprintHex)
 	if err != nil {
-		return logical.ErrorResponse("could not hex decode KeyID %s", x), err
+		return logical.ErrorResponse("could not hex decode KeyID %s", fingerprintHex), err
 	}
 	keyID := binary.BigEndian.Uint64(fingerprint)
 
