@@ -179,7 +179,42 @@ func (b *backend) pathSubkeyCreate(ctx context.Context, req *logical.Request, da
 }
 
 func (b *backend) pathSubkeyDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	return logical.ErrorResponse("not implemented"), nil
+	name := data.Get("name").(string)
+	fingerprintHex := data.Get("key_id").(string)
+
+	entity, exportable, err := b.readKey(ctx, req.Storage, name)
+	if err != nil {
+		return nil, err
+	}
+	if entity == nil {
+		return logical.ErrorResponse("master key does not exist"), nil
+	}
+
+	subkeys := []openpgp.Subkey{}
+	for _, subkey := range entity.Subkeys {
+		if subkey.PublicKey.KeyIdString() != fingerprintHex {
+			subkeys = append(subkeys, subkey)
+		}
+	}
+	entity.Subkeys = subkeys
+
+	var buf bytes.Buffer
+	err = entity.SerializePrivate(&buf, nil)
+	if err != nil {
+		return nil, err
+	}
+	currStorageEntry, err := logical.StorageEntryJSON("key/"+name, &keyEntry{
+		SerializedKey: buf.Bytes(),
+		Exportable:    exportable,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := req.Storage.Put(ctx, currStorageEntry); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 func (b *backend) pathSubkeyList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {

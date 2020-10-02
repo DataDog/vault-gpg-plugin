@@ -475,7 +475,7 @@ This endpoint returns information, such as the key type, capabilities, and size,
 
 - `name` `(string: <required>)` – Specifies the name of the master key with which the subkey is associated. This is specified as part of the URL.
 
-- `key_id` `(string: <required>)` – Specifies the Key ID of the subkey. This can also be specified as part of the URL.
+- `key_id` `(string: <required>)` – Specifies the Key ID of the subkey. This is specified as part of the URL.
 
 #### Sample request
 
@@ -536,7 +536,7 @@ This endpoint deletes the given subkey associated with the given master key.
 
 - `name` `(string: <required>)` – Specifies the name of the master key with which the subkey is associated. This is specified as part of the URL.
 
-- `key_id` `(string: <required>)` – Specifies the Key ID of the subkey. This can also be specified as part of the URL.
+- `key_id` `(string: <required>)` – Specifies the Key ID of the subkey. This is specified as part of the URL.
 
 #### Sample request
 
