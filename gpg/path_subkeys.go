@@ -264,7 +264,7 @@ func (b *backend) pathSubkeyRead(ctx context.Context, req *logical.Request, data
 		return logical.ErrorResponse("there are %v != 1 subkeys", len(keys)), nil
 	}
 	subkey := keys[0]
-	if subkey.PrivateKey.IsSubkey != true || subkey.PublicKey.IsSubkey != true {
+	if !subkey.PrivateKey.IsSubkey || !subkey.PublicKey.IsSubkey {
 		return logical.ErrorResponse("KeyID %v does not correspond to a subkey", keyID), nil
 	}
 

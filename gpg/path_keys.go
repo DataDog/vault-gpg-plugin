@@ -212,7 +212,7 @@ func (b *backend) pathKeyCreate(ctx context.Context, req *logical.Request, data 
 	lock.Lock()
 	defer lock.Unlock()
 
-	entity, exportable, err := b.readKey(ctx, req.Storage, name)
+	entity, _, err := b.readKey(ctx, req.Storage, name)
 	if err != nil {
 		return nil, err
 	}

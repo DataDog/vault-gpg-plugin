@@ -292,7 +292,7 @@ func (b *backend) pathSubkeySign(ctx context.Context, req *logical.Request, data
 		return logical.ErrorResponse("there are %v != 1 subkeys", len(keys)), nil
 	}
 	subkey := keys[0]
-	if subkey.PrivateKey.IsSubkey != true || subkey.PublicKey.IsSubkey != true {
+	if !subkey.PrivateKey.IsSubkey || !subkey.PublicKey.IsSubkey {
 		return logical.ErrorResponse("KeyID %v does not correspond to a subkey", keyID), nil
 	}
 
@@ -327,13 +327,13 @@ func (b *backend) pathSubkeySign(ctx context.Context, req *logical.Request, data
 	format := data.Get("format").(string)
 	switch format {
 	case "ascii-armor":
-		err = openpgp.ArmoredDetachSign(&signature, &subkey, message, &config)
+		err = openpgp.NewArmoredDetachSign(&signature, subkey.PrivateKey, message, &config)
 		if err != nil {
 			return nil, err
 		}
 	case "base64":
 		encoder := base64.NewEncoder(base64.StdEncoding, &signature)
-		err = openpgp.DetachSign(encoder, &subkey, message, &config)
+		err = openpgp.NewDetachSign(encoder, subkey.PrivateKey, message, &config)
 		if err != nil {
 			return nil, err
 		}

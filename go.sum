@@ -127,6 +127,8 @@ github.com/trishankatdatadog/crypto v0.0.0-20201001134537-b3053ccd948b h1:fM/kxj
 github.com/trishankatdatadog/crypto v0.0.0-20201001134537-b3053ccd948b/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 github.com/trishankatdatadog/crypto v0.0.0-20201003032211-b00c698fd90d h1:DjFrb66g7w/EqpIaCHXrpDuw7C/zSQ1WPzqjKClexYQ=
 github.com/trishankatdatadog/crypto v0.0.0-20201003032211-b00c698fd90d/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
+github.com/trishankatdatadog/crypto v0.0.0-20201003183309-2dc30c1240f0 h1:6HHfrwzwho5oBfTZ4fRP+m6nbwvTUtQr6nksvMfkKts=
+github.com/trishankatdatadog/crypto v0.0.0-20201003183309-2dc30c1240f0/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550 h1:ObdrDkeb4kJdCP557AjRjq69pTHfNouLtWZG7j9rPN8=
