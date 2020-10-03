@@ -549,7 +549,7 @@ $ curl \
 
 ### Sign Data with Subkey
 
-This endpoint returns the signature of the given data using the given subkey associated with the given master key, and the specified hash algorithm.
+This endpoint returns a signature of the given input data using the given subkey associated with the given master key, and the specified hash algorithm.
 
 | Method   | Path                                            | Produces               |
 | :------- | :---------------------------------------------- | :--------------------- |
