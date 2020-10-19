@@ -53,18 +53,18 @@ func TestBackend_Signing(t *testing.T) {
 	b, storage := getTestBackend(t)
 
 	keyData := map[string]interface{}{
-		"real_name":  "Vault",
-		"email":      "vault@example.com",
-		"comment":    "Comment",
-		"key_bits":   2048,
-		"exportable": true,
+		"real_name": "Vault",
+		"email":     "vault@example.com",
+		"comment":   "Comment",
+		"key_bits":  2048,
 	}
 	base64InputData := "bXkgc2VjcmV0IGRhdGEK"
 	otherBase64InputData := "c29tZSBvdGhlciBkYXRhCg=="
-	masterName := "test"
-	testAccStepCreateKey(t, b, storage, masterName, keyData, false)
 
+	// NOTE: every test uses a separate master key so that parallel tests do not affect each other.
 	t.Run("signing with master key", func(t *testing.T) {
+		masterName := "master1"
+		testAccStepCreateKey(t, b, storage, masterName, keyData, false)
 		signature := testAccStepSign(t, b, storage, masterName, map[string]interface{}{
 			"input": base64InputData,
 		})
@@ -79,6 +79,8 @@ func TestBackend_Signing(t *testing.T) {
 	})
 
 	t.Run("signing with subkey", func(t *testing.T) {
+		masterName := "master2"
+		testAccStepCreateKey(t, b, storage, masterName, keyData, false)
 		subkeyRespData := testAccStepCreateSubkey(t, b, storage, masterName, map[string]interface{}{})
 		subkeyID := subkeyRespData["key_id"].(string)
 		testAccStepReadSubkey(t, b, storage, masterName, subkeyID)
@@ -93,17 +95,16 @@ func TestBackend_Signing(t *testing.T) {
 			"input":     otherBase64InputData,
 			"signature": signature,
 		}, false)
-		// NOTE: Critical to delete this subkey, otherwise we might end up always finding this signing subkey first for any signing operation!
-		testAccStepDeleteSubkey(t, b, storage, masterName, subkeyID)
 	})
 
 	t.Run("verification after key expiration", func(t *testing.T) {
-		keyExpiresAfterSeconds := 3
-		subkeyRespData := testAccStepCreateSubkey(t, b, storage, masterName, map[string]interface{}{
+		masterName := "master3"
+		testAccStepCreateKey(t, b, storage, masterName, keyData, false)
+		// NOTE: choose expiration time long enough that the key does not expire by the time we are done creating it.
+		keyExpiresAfterSeconds := 10
+		testAccStepCreateSubkey(t, b, storage, masterName, map[string]interface{}{
 			"expires": keyExpiresAfterSeconds,
 		})
-		subkeyID := subkeyRespData["key_id"].(string)
-		testAccStepReadSubkey(t, b, storage, masterName, subkeyID)
 		signature := testAccStepSign(t, b, storage, masterName, map[string]interface{}{
 			"input":   base64InputData,
 			"expires": 0, // signature does not expire
@@ -121,11 +122,11 @@ func TestBackend_Signing(t *testing.T) {
 	})
 
 	t.Run("verification after sig expiration", func(t *testing.T) {
-		subkeyRespData := testAccStepCreateSubkey(t, b, storage, masterName, map[string]interface{}{
+		masterName := "master4"
+		testAccStepCreateKey(t, b, storage, masterName, keyData, false)
+		testAccStepCreateSubkey(t, b, storage, masterName, map[string]interface{}{
 			"expires": 0, // subkey does not expire
 		})
-		subkeyID := subkeyRespData["key_id"].(string)
-		testAccStepReadSubkey(t, b, storage, masterName, subkeyID)
 		sigExpiresAfterSeconds := 3
 		signature := testAccStepSign(t, b, storage, masterName, map[string]interface{}{
 			"input":   base64InputData,
@@ -343,21 +344,6 @@ func testAccStepReadSubkey(t *testing.T, b logical.Backend, s logical.Storage, m
 	}
 	if capabilities[0] != "sign" {
 		t.Errorf("expected capabilities to have one entry of 'sign', but got %s", capabilities[0])
-	}
-}
-
-func testAccStepDeleteSubkey(t *testing.T, b logical.Backend, storage logical.Storage, masterName string, subkeyID string) {
-	response, err := b.HandleRequest(context.Background(), &logical.Request{
-		Operation: logical.DeleteOperation,
-		Path:      "keys/" + masterName + "/subkeys/" + subkeyID,
-		Storage:   storage,
-	})
-
-	if err != nil {
-		t.Error(err)
-	}
-	if response.IsError() {
-		t.Error(response.Error())
 	}
 }
 
