@@ -97,7 +97,7 @@ func pathVerify(b *backend) *framework.Path {
 
 func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	name := data.Get("name").(string)
-	entity, _, err := b.readKey(ctx, req.Storage, name)
+	entity, _, err := b.readEntity(ctx, req.Storage, name)
 	if err != nil {
 		return nil, err
 	}

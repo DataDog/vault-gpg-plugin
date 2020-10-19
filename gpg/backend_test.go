@@ -60,6 +60,9 @@ func TestBackend_Signing(t *testing.T) {
 	}
 	base64InputData := "bXkgc2VjcmV0IGRhdGEK"
 	otherBase64InputData := "c29tZSBvdGhlciBkYXRhCg=="
+	// NOTE: choose expiration time long enough that the key does not expire by the time we are done creating it.
+	sigExpiresAfterSeconds := 6
+	keyExpiresAfterSeconds := 2 * sigExpiresAfterSeconds
 
 	// NOTE: every test uses a separate master key so that parallel tests do not affect each other.
 	t.Run("signing with master key", func(t *testing.T) {
@@ -100,8 +103,6 @@ func TestBackend_Signing(t *testing.T) {
 	t.Run("verification after key expiration", func(t *testing.T) {
 		masterName := "master3"
 		testAccStepCreateKey(t, b, storage, masterName, keyData, false)
-		// NOTE: choose expiration time long enough that the key does not expire by the time we are done creating it.
-		keyExpiresAfterSeconds := 10
 		testAccStepCreateSubkey(t, b, storage, masterName, map[string]interface{}{
 			"expires": keyExpiresAfterSeconds,
 		})
@@ -127,7 +128,6 @@ func TestBackend_Signing(t *testing.T) {
 		testAccStepCreateSubkey(t, b, storage, masterName, map[string]interface{}{
 			"expires": 0, // subkey does not expire
 		})
-		sigExpiresAfterSeconds := 3
 		signature := testAccStepSign(t, b, storage, masterName, map[string]interface{}{
 			"input":   base64InputData,
 			"expires": sigExpiresAfterSeconds,

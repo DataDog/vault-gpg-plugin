@@ -106,7 +106,7 @@ func (b *backend) pathSubkeyCreate(ctx context.Context, req *logical.Request, da
 	}
 	config.KeyLifetimeSecs = expires
 
-	entity, exportable, err := b.readKey(ctx, req.Storage, name)
+	entity, exportable, err := b.readEntity(ctx, req.Storage, name)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +147,7 @@ func (b *backend) pathSubkeyDelete(ctx context.Context, req *logical.Request, da
 	name := data.Get("name").(string)
 	fingerprintHex := data.Get("key_id").(string)
 
-	entity, exportable, err := b.readKey(ctx, req.Storage, name)
+	entity, exportable, err := b.readEntity(ctx, req.Storage, name)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (b *backend) pathSubkeyDelete(ctx context.Context, req *logical.Request, da
 func (b *backend) pathSubkeyList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	name := data.Get("name").(string)
 
-	entity, _, err := b.readKey(ctx, req.Storage, name)
+	entity, _, err := b.readEntity(ctx, req.Storage, name)
 	if err != nil {
 		return nil, err
 	}
@@ -214,21 +214,19 @@ func (b *backend) pathSubkeyRead(ctx context.Context, req *logical.Request, data
 	}
 	keyID := binary.BigEndian.Uint64(fingerprint)
 
-	entity, _, err := b.readKey(ctx, req.Storage, name)
+	keyRing, _, err := b.readKeyRing(ctx, req.Storage, name)
 	if err != nil {
 		return nil, err
 	}
-	if entity == nil {
+	if keyRing == nil || len(keyRing) == 0 {
 		return logical.ErrorResponse("master key does not exist"), nil
 	}
 
-	var el openpgp.EntityList
-	el = append(el, entity)
-	keys := el.KeysById(keyID)
-	if len(keys) != 1 {
-		return logical.ErrorResponse("there are %v != 1 subkeys", len(keys)), nil
+	subkeys := keyRing.KeysById(keyID)
+	if len(subkeys) != 1 {
+		return logical.ErrorResponse("there are %v != 1 subkeys", len(subkeys)), nil
 	}
-	subkey := keys[0]
+	subkey := subkeys[0]
 	if !subkey.PrivateKey.IsSubkey || !subkey.PublicKey.IsSubkey {
 		return logical.ErrorResponse("KeyID %v does not correspond to a subkey", keyID), nil
 	}
