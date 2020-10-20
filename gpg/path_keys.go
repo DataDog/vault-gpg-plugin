@@ -102,14 +102,43 @@ func (b *backend) key(ctx context.Context, s logical.Storage, name string) (*key
 	return &result, nil
 }
 
-func (b *backend) entity(entry *keyEntry) (*openpgp.Entity, error) {
+func (b *backend) keyRing(entry *keyEntry) (keyRing openpgp.EntityList, err error) {
 	r := bytes.NewReader(entry.SerializedKey)
-	el, err := openpgp.ReadKeyRing(r)
+	keyRing, err = openpgp.ReadKeyRing(r)
 	if err != nil {
 		return nil, err
 	}
+	return
+}
 
-	return el[0], nil
+func (b *backend) readKeyRing(ctx context.Context, storage logical.Storage, name string) (keyRing openpgp.EntityList, exportable bool, err error) {
+	entry, err := b.key(ctx, storage, name)
+	if err != nil {
+		return
+	}
+	if entry == nil {
+		return
+	}
+	exportable = entry.Exportable
+	keyRing, err = b.keyRing(entry)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (b *backend) readEntity(ctx context.Context, storage logical.Storage, name string) (entity *openpgp.Entity, exportable bool, err error) {
+	keyRing, exportable, err := b.readKeyRing(ctx, storage, name)
+	if err != nil {
+		return nil, false, err
+	}
+	if len(keyRing) == 0 {
+		return nil, false, nil
+	}
+	if len(keyRing) > 1 {
+		return nil, false, fmt.Errorf("keyring has %d > 1 keys", len(keyRing))
+	}
+	return keyRing[0], exportable, nil
 }
 
 func serializePrivateWithoutSigning(w io.Writer, e *openpgp.Entity) (err error) {
@@ -153,25 +182,9 @@ func serializePrivateWithoutSigning(w io.Writer, e *openpgp.Entity) (err error) 
 	return nil
 }
 
-func (b *backend) readKey(ctx context.Context, storage logical.Storage, name string) (entity *openpgp.Entity, exportable bool, err error) {
-	entry, err := b.key(ctx, storage, name)
-	if err != nil {
-		return
-	}
-	if entry == nil {
-		return
-	}
-	exportable = entry.Exportable
-	entity, err = b.entity(entry)
-	if err != nil {
-		return
-	}
-	return
-}
-
 func (b *backend) pathKeyRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	name := data.Get("name").(string)
-	entity, exportable, err := b.readKey(ctx, req.Storage, name)
+	entity, exportable, err := b.readEntity(ctx, req.Storage, name)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +225,7 @@ func (b *backend) pathKeyCreate(ctx context.Context, req *logical.Request, data 
 	lock.Lock()
 	defer lock.Unlock()
 
-	entity, _, err := b.readKey(ctx, req.Storage, name)
+	entity, _, err := b.readEntity(ctx, req.Storage, name)
 	if err != nil {
 		return nil, err
 	}

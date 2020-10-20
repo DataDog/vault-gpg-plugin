@@ -53,34 +53,22 @@ func TestBackend_Signing(t *testing.T) {
 	b, storage := getTestBackend(t)
 
 	keyData := map[string]interface{}{
-		"real_name":  "Vault",
-		"email":      "vault@example.com",
-		"comment":    "Comment",
-		"key_bits":   4096,
-		"exportable": true,
+		"real_name": "Vault",
+		"email":     "vault@example.com",
+		"comment":   "Comment",
+		"key_bits":  2048,
 	}
 	base64InputData := "bXkgc2VjcmV0IGRhdGEK"
 	otherBase64InputData := "c29tZSBvdGhlciBkYXRhCg=="
-	masterName := "test"
-	testAccStepCreateKey(t, b, storage, masterName, keyData, false)
+	// NOTE: choose expiration time long enough that the key does not expire by the time we are done creating it.
+	sigExpiresAfterSeconds := 6
+	keyExpiresAfterSeconds := 2 * sigExpiresAfterSeconds
 
+	// NOTE: every test uses a separate master key so that parallel tests do not affect each other.
 	t.Run("signing with master key", func(t *testing.T) {
-		signature := testAccStepSign(t, b, storage, masterName, base64InputData)
-		testAccStepVerify(t, b, storage, masterName, map[string]interface{}{
-			"input":     base64InputData,
-			"signature": signature,
-		}, true)
-		testAccStepVerify(t, b, storage, masterName, map[string]interface{}{
-			"input":     otherBase64InputData,
-			"signature": signature,
-		}, false)
-	})
-
-	t.Run("signing with subkey", func(t *testing.T) {
-		subkeyRespData := testAccStepCreateSubkey(t, b, storage, masterName, map[string]interface{}{})
-		subkeyID := subkeyRespData["key_id"].(string)
-		testAccStepReadSubkey(t, b, storage, masterName, subkeyID)
-		signature := testAccStepSignWithSubkey(t, b, storage, masterName, subkeyID, map[string]interface{}{
+		masterName := "master1"
+		testAccStepCreateKey(t, b, storage, masterName, keyData, false)
+		signature := testAccStepSign(t, b, storage, masterName, map[string]interface{}{
 			"input": base64InputData,
 		})
 		testAccStepVerify(t, b, storage, masterName, map[string]interface{}{
@@ -93,24 +81,63 @@ func TestBackend_Signing(t *testing.T) {
 		}, false)
 	})
 
-	t.Run("signing after expiration", func(t *testing.T) {
-		expireAfterSeconds := 1
-		subkeyRespData := testAccStepCreateSubkey(t, b, storage, masterName, map[string]interface{}{
-			"expires": expireAfterSeconds, // 1 second
-		})
+	t.Run("signing with subkey", func(t *testing.T) {
+		masterName := "master2"
+		testAccStepCreateKey(t, b, storage, masterName, keyData, false)
+		subkeyRespData := testAccStepCreateSubkey(t, b, storage, masterName, map[string]interface{}{})
 		subkeyID := subkeyRespData["key_id"].(string)
 		testAccStepReadSubkey(t, b, storage, masterName, subkeyID)
-		signature := testAccStepSignWithSubkey(t, b, storage, masterName, subkeyID, map[string]interface{}{
-			"input":   base64InputData,
-			"expires": expireAfterSeconds,
+		signature := testAccStepSign(t, b, storage, masterName, map[string]interface{}{
+			"input": base64InputData,
 		})
+		testAccStepVerify(t, b, storage, masterName, map[string]interface{}{
+			"input":     base64InputData,
+			"signature": signature,
+		}, true)
+		testAccStepVerify(t, b, storage, masterName, map[string]interface{}{
+			"input":     otherBase64InputData,
+			"signature": signature,
+		}, false)
+	})
 
-		// TODO
-		t.Skipf("re-enable this test once keys and/or signatures expire")
+	t.Run("verification after key expiration", func(t *testing.T) {
+		masterName := "master3"
+		testAccStepCreateKey(t, b, storage, masterName, keyData, false)
+		testAccStepCreateSubkey(t, b, storage, masterName, map[string]interface{}{
+			"expires": keyExpiresAfterSeconds,
+		})
+		signature := testAccStepSign(t, b, storage, masterName, map[string]interface{}{
+			"input":   base64InputData,
+			"expires": 0, // signature does not expire
+		})
+		testAccStepVerify(t, b, storage, masterName, map[string]interface{}{
+			"input":     base64InputData,
+			"signature": signature,
+		}, true)
+		// Sleep for long enough that the subkey *should have* expired
+		time.Sleep(time.Duration(keyExpiresAfterSeconds) * time.Second)
+		testAccStepVerify(t, b, storage, masterName, map[string]interface{}{
+			"input":     base64InputData,
+			"signature": signature,
+		}, false)
+	})
 
+	t.Run("verification after sig expiration", func(t *testing.T) {
+		masterName := "master4"
+		testAccStepCreateKey(t, b, storage, masterName, keyData, false)
+		testAccStepCreateSubkey(t, b, storage, masterName, map[string]interface{}{
+			"expires": 0, // subkey does not expire
+		})
+		signature := testAccStepSign(t, b, storage, masterName, map[string]interface{}{
+			"input":   base64InputData,
+			"expires": sigExpiresAfterSeconds,
+		})
+		testAccStepVerify(t, b, storage, masterName, map[string]interface{}{
+			"input":     base64InputData,
+			"signature": signature,
+		}, true)
 		// Sleep for long enough that the subkey and the signature *should have* expired
-		time.Sleep(time.Duration(3*expireAfterSeconds) * time.Second)
-
+		time.Sleep(time.Duration(sigExpiresAfterSeconds) * time.Second)
 		testAccStepVerify(t, b, storage, masterName, map[string]interface{}{
 			"input":     base64InputData,
 			"signature": signature,
@@ -298,10 +325,10 @@ func testAccStepCreateSubkey(t *testing.T, b logical.Backend, s logical.Storage,
 	return resp.Data
 }
 
-func testAccStepReadSubkey(t *testing.T, b logical.Backend, s logical.Storage, masterName string, subkeyName string) {
+func testAccStepReadSubkey(t *testing.T, b logical.Backend, s logical.Storage, masterName string, subkeyID string) {
 	resp, err := b.HandleRequest(context.Background(), &logical.Request{
 		Operation: logical.ReadOperation,
-		Path:      "keys/" + masterName + "/subkeys/" + subkeyName,
+		Path:      "keys/" + masterName + "/subkeys/" + subkeyID,
 		Storage:   s,
 	})
 	if err != nil {
@@ -320,25 +347,10 @@ func testAccStepReadSubkey(t *testing.T, b logical.Backend, s logical.Storage, m
 	}
 }
 
-func testAccStepSign(t *testing.T, b logical.Backend, s logical.Storage, masterName string, base64Input string) string {
+func testAccStepSign(t *testing.T, b logical.Backend, s logical.Storage, masterName string, signData map[string]interface{}) string {
 	resp, err := b.HandleRequest(context.Background(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "sign/" + masterName,
-		Data: map[string]interface{}{
-			"input": base64Input,
-		},
-		Storage: s,
-	})
-	if err != nil {
-		t.Error(err)
-	}
-	return resp.Data["signature"].(string)
-}
-
-func testAccStepSignWithSubkey(t *testing.T, b logical.Backend, s logical.Storage, masterName string, subkeyName string, signData map[string]interface{}) string {
-	resp, err := b.HandleRequest(context.Background(), &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "sign/" + masterName + "/subkeys/" + subkeyName,
 		Data:      signData,
 		Storage:   s,
 	})

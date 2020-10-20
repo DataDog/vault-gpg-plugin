@@ -14,21 +14,21 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: Tests (${{ matrix.os }})
     steps:
-      - uses: actions/checkout@v2.3.3
-      - uses: actions/setup-go@v2.1.2
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
         with:
           go-version: '^1.15.0'
       - name: Tests
         run: "go test -race -coverprofile='coverage.txt' -covermode=atomic -v ./gpg/"
-      - uses: codecov/codecov-action@v1.0.13
+      - uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
   static_analysis:
     runs-on: ubuntu-20.04
     name: Run static analysis and linting
     steps:
-      - uses: actions/checkout@v2.3.3
-      - uses: actions/setup-go@v2.1.2
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
         with:
           go-version: '^1.15.0'
       - name: Go fmt
@@ -39,15 +39,3 @@ jobs:
         run: go run honnef.co/go/tools/cmd/staticcheck -checks 'all,-ST1000' ./...
       - name: Gosec
         run: go run github.com/securego/gosec/cmd/gosec -exclude=G104 ./...
-  build_script:
-    runs-on: ubuntu-20.04
-    name: Build across all supported architectures
-    steps:
-      - uses: actions/checkout@v2.3.3
-      - uses: actions/setup-go@v2.1.2
-        with:
-          go-version: '^1.15.0'
-      - name: Build
-        run: ./scripts/build.sh
-      - name: Display checksum
-        run: find ./pkg/ -name '*.sha256sum' -exec cat {} \;

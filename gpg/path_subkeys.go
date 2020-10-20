@@ -3,7 +3,6 @@ package gpg
 import (
 	"bytes"
 	"context"
-	"crypto/rsa"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -93,17 +92,21 @@ func (b *backend) pathSubkeyCreate(ctx context.Context, req *logical.Request, da
 	capabilities := data.Get("capabilities").([]string)
 	expires := uint32(data.Get("expires").(int))
 
+	config := packet.Config{}
 	if keyBits < 2048 {
 		return logical.ErrorResponse("asymmetric subkeys < 2048 bits are unsafe"), nil
 	}
+	config.RSABits = keyBits
 	if keyType != "rsa" {
 		return logical.ErrorResponse("non-RSA subkeys are not yet supported"), nil
 	}
+	config.Algorithm = packet.PubKeyAlgoRSA
 	if !reflect.DeepEqual(capabilities, []string{"sign"}) {
 		return logical.ErrorResponse("capabilities other than signing are not yet supported: " + fmt.Sprintf("%v", capabilities)), nil
 	}
+	config.KeyLifetimeSecs = expires
 
-	entity, exportable, err := b.readKey(ctx, req.Storage, name)
+	entity, exportable, err := b.readEntity(ctx, req.Storage, name)
 	if err != nil {
 		return nil, err
 	}
@@ -111,49 +114,11 @@ func (b *backend) pathSubkeyCreate(ctx context.Context, req *logical.Request, da
 		return logical.ErrorResponse("master key does not exist"), nil
 	}
 
-	config := packet.Config{
-		RSABits: keyBits,
-	}
-	creationTime := config.Now()
-
-	subkeyPriv, err := rsa.GenerateKey(config.Random(), config.RSABits)
+	err = entity.AddSigningSubkey(&config)
 	if err != nil {
-		return nil, err
+		return logical.ErrorResponse("could not add signing subkey"), err
 	}
-
-	subkey := openpgp.Subkey{
-		PublicKey:  packet.NewRSAPublicKey(creationTime, &subkeyPriv.PublicKey),
-		PrivateKey: packet.NewRSAPrivateKey(creationTime, subkeyPriv),
-		Sig: &packet.Signature{
-			CreationTime:    creationTime,
-			KeyLifetimeSecs: &expires,
-			SigType:         packet.SigTypeSubkeyBinding,
-			PubKeyAlgo:      packet.PubKeyAlgoRSA,
-			Hash:            config.Hash(),
-			FlagsValid:      true,
-			FlagSign:        true,
-			IssuerKeyId:     &entity.PrimaryKey.KeyId,
-		},
-	}
-	subkey.PublicKey.IsSubkey = true
-	subkey.PrivateKey.IsSubkey = true
-	subkey.Sig.EmbeddedSignature = &packet.Signature{
-		CreationTime:    creationTime,
-		KeyLifetimeSecs: &expires,
-		SigType:         packet.SigTypePrimaryKeyBinding,
-		PubKeyAlgo:      packet.PubKeyAlgoRSA,
-		Hash:            config.Hash(),
-		IssuerKeyId:     &entity.PrimaryKey.KeyId,
-	}
-	err = subkey.Sig.EmbeddedSignature.SignMasterKey(entity.PrimaryKey, subkey.PrivateKey, &config)
-	if err != nil {
-		return nil, err
-	}
-	err = subkey.Sig.SignSubKey(subkey.PublicKey, entity.PrivateKey, &config)
-	if err != nil {
-		return nil, err
-	}
-	entity.Subkeys = append(entity.Subkeys, subkey)
+	subkey := entity.Subkeys[len(entity.Subkeys)-1]
 
 	var buf bytes.Buffer
 	err = entity.SerializePrivate(&buf, nil)
@@ -182,7 +147,7 @@ func (b *backend) pathSubkeyDelete(ctx context.Context, req *logical.Request, da
 	name := data.Get("name").(string)
 	fingerprintHex := data.Get("key_id").(string)
 
-	entity, exportable, err := b.readKey(ctx, req.Storage, name)
+	entity, exportable, err := b.readEntity(ctx, req.Storage, name)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +185,7 @@ func (b *backend) pathSubkeyDelete(ctx context.Context, req *logical.Request, da
 func (b *backend) pathSubkeyList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	name := data.Get("name").(string)
 
-	entity, _, err := b.readKey(ctx, req.Storage, name)
+	entity, _, err := b.readEntity(ctx, req.Storage, name)
 	if err != nil {
 		return nil, err
 	}
@@ -249,31 +214,32 @@ func (b *backend) pathSubkeyRead(ctx context.Context, req *logical.Request, data
 	}
 	keyID := binary.BigEndian.Uint64(fingerprint)
 
-	entity, _, err := b.readKey(ctx, req.Storage, name)
+	keyRing, _, err := b.readKeyRing(ctx, req.Storage, name)
 	if err != nil {
 		return nil, err
 	}
-	if entity == nil {
+	if keyRing == nil || len(keyRing) == 0 {
 		return logical.ErrorResponse("master key does not exist"), nil
 	}
 
-	var el openpgp.EntityList
-	el = append(el, entity)
-	keys := el.KeysById(keyID)
-	if len(keys) != 1 {
-		return logical.ErrorResponse("there are %v != 1 subkeys", len(keys)), nil
+	subkeys := keyRing.KeysById(keyID)
+	if len(subkeys) != 1 {
+		return logical.ErrorResponse("there are %v != 1 subkeys", len(subkeys)), nil
 	}
-	subkey := keys[0]
+	subkey := subkeys[0]
 	if !subkey.PrivateKey.IsSubkey || !subkey.PublicKey.IsSubkey {
 		return logical.ErrorResponse("KeyID %v does not correspond to a subkey", keyID), nil
 	}
 
 	var keyType string
-	var keyBits int
+	var keyBits uint16
 	switch subkey.PublicKey.PubKeyAlgo {
 	case packet.PubKeyAlgoRSA:
 		keyType = "rsa"
-		keyBits = subkey.PublicKey.PublicKey.(*rsa.PublicKey).Size() * 8
+		keyBits, err = subkey.PublicKey.BitLength()
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return logical.ErrorResponse("unknown subkey type: %v", subkey.PublicKey.PubKeyAlgo), nil
 	}
@@ -287,13 +253,17 @@ func (b *backend) pathSubkeyRead(ctx context.Context, req *logical.Request, data
 			capabilities = append(capabilities, "encrypt")
 		}
 	}
+	expires := uint32(0)
+	if subkey.SelfSignature.KeyLifetimeSecs != nil {
+		expires = *subkey.SelfSignature.KeyLifetimeSecs
+	}
 
 	return &logical.Response{
 		Data: map[string]interface{}{
 			"key_type":     keyType,
 			"capabilities": capabilities,
 			"key_bits":     keyBits,
-			"expires":      subkey.SelfSignature.KeyLifetimeSecs,
+			"expires":      expires,
 		},
 	}, nil
 }
