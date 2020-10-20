@@ -18,6 +18,7 @@ func TestGPG_CreateNotGeneratedKeyWithoutKeyError(t *testing.T) {
 		Path:      "keys/test",
 		Data: map[string]interface{}{
 			"generate": false,
+			"expires":  0,
 		},
 	}
 	response, err := b.HandleRequest(context.Background(), req)
@@ -42,6 +43,7 @@ func TestGPG_CreateErrorGeneratedKeyWithInvalidKey(t *testing.T) {
 		Data: map[string]interface{}{
 			"generate": false,
 			"key":      "Not properly ascii-armored key",
+			"expires":  0,
 		},
 	}
 	response, err := b.HandleRequest(context.Background(), req)
@@ -96,6 +98,7 @@ func TestGPG_CreateErrorGeneratedKeyWithOnlyPublicKey(t *testing.T) {
 		Data: map[string]interface{}{
 			"generate": false,
 			"key":      gpgPublicKey,
+			"expires":  0,
 		},
 	}
 	response, err := b.HandleRequest(context.Background(), req)

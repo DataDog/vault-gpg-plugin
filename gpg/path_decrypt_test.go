@@ -2,8 +2,9 @@ package gpg
 
 import (
 	"context"
-	"github.com/hashicorp/vault/sdk/logical"
 	"testing"
+
+	"github.com/hashicorp/vault/sdk/logical"
 )
 
 func TestGPG_Decrypt(t *testing.T) {
@@ -17,6 +18,7 @@ func TestGPG_Decrypt(t *testing.T) {
 		Data: map[string]interface{}{
 			"generate": false,
 			"key":      privateDecryptKey,
+			"expires":  0,
 		},
 	}
 	_, err := b.HandleRequest(context.Background(), req)
@@ -86,6 +88,7 @@ func TestGPG_DecryptError(t *testing.T) {
 		Data: map[string]interface{}{
 			"generate": false,
 			"key":      privateDecryptKey,
+			"expires":  0,
 		},
 	}
 	_, err = b.HandleRequest(context.Background(), req)

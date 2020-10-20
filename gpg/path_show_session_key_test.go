@@ -19,6 +19,7 @@ func TestGPG_ShowSessionKey(t *testing.T) {
 		Data: map[string]interface{}{
 			"generate": false,
 			"key":      privateSessionDecryptKey,
+			"expires":  0,
 		},
 	}
 	_, err := b.HandleRequest(context.Background(), req)
@@ -91,6 +92,7 @@ func TestGPG_ShowSessionKeyError(t *testing.T) {
 		Data: map[string]interface{}{
 			"generate": false,
 			"key":      privateSessionDecryptKey,
+			"expires":  0,
 		},
 	}
 	_, err = b.HandleRequest(context.Background(), req)
