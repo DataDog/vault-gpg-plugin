@@ -55,6 +55,11 @@ func pathKeys(b *backend) *framework.Path {
 				Default:     2048,
 				Description: "The number of bits to use. Only used if generate is true.",
 			},
+			"expires": {
+				Type:        framework.TypeInt,
+				Default:     365 * 24 * 60 * 60,
+				Description: "The number of seconds from the creation time (now) after which the subkey expires. If the number is zero, then the subkey never expires.",
+			},
 			"key": {
 				Type:        framework.TypeString,
 				Description: "The ASCII-armored GPG key to use. Only used if generate is false.",
@@ -217,6 +222,7 @@ func (b *backend) pathKeyCreate(ctx context.Context, req *logical.Request, data 
 	email := data.Get("email").(string)
 	comment := data.Get("comment").(string)
 	keyBits := data.Get("key_bits").(int)
+	expires := uint32(data.Get("expires").(int))
 	exportable := data.Get("exportable").(bool)
 	generate := data.Get("generate").(bool)
 	key := data.Get("key").(string)
@@ -240,7 +246,8 @@ func (b *backend) pathKeyCreate(ctx context.Context, req *logical.Request, data 
 			return logical.ErrorResponse("Keys < 2048 bits are unsafe and not supported"), nil
 		}
 		config := packet.Config{
-			RSABits: keyBits,
+			RSABits:         keyBits,
+			KeyLifetimeSecs: expires,
 		}
 		entity, err := openpgp.NewEntity(realName, comment, email, &config)
 		if err != nil {
@@ -254,11 +261,14 @@ func (b *backend) pathKeyCreate(ctx context.Context, req *logical.Request, data 
 		if key == "" {
 			return logical.ErrorResponse("the key value is required for generated keys"), nil
 		}
-		el, err := openpgp.ReadArmoredKeyRing(strings.NewReader(key))
+		if expires > 0 {
+			return logical.ErrorResponse("cannot set expiry on an imported key"), nil
+		}
+		keyRing, err := openpgp.ReadArmoredKeyRing(strings.NewReader(key))
 		if err != nil {
 			return logical.ErrorResponse(err.Error()), nil
 		}
-		err = serializePrivateWithoutSigning(&buf, el[0])
+		err = serializePrivateWithoutSigning(&buf, keyRing[0])
 		if err != nil {
 			return logical.ErrorResponse("the key could not be serialized, is a private key present?"), nil
 		}

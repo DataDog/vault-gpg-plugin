@@ -10,4 +10,4 @@ require (
 	honnef.co/go/tools v0.0.0-20190523083050-ea95bdfd59fc
 )
 
-replace golang.org/x/crypto => github.com/ProtonMail/crypto v0.0.0-20201016191319-576ad9c42ffa
+replace golang.org/x/crypto => github.com/DataDog/crypto v0.0.0-20201020222332-8da10552845c
