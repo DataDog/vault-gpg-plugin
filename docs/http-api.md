@@ -50,7 +50,7 @@ it must be deleted first.
 
 - `key_bits` `(int: 2048)` – Specifies the number of bits of the generated master key to use. Only used if generate is true.
 
-- `expires` `(int: 31536000)` – Specifies the number of seconds from the creation time (now) after which the subkey expires. If the number is zero, then the subkey never expires.
+- `expires` `(int: 31536000)` – Specifies the number of seconds from the creation time (now) after which the master key and encryption subkey expire. If the number is zero, then they never expire.
 
 - `exportable` `(bool: false)` – Specifies if the raw key is exportable. Note that this will apply to all subkeys, too.
 
