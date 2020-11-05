@@ -523,9 +523,7 @@ $ curl \
 
 ```json
 {
-  "data": {
-    "key_ids": ["6D0A9151F25B6B85"]
-  }
+  "data": ["6D0A9151F25B6B85"]
 }
 ```
 
@@ -554,7 +552,7 @@ $ curl \
 
 ### Sign Data with Subkey
 
-Use [Sign Data](#sign-data) to sign data with the _first_ available signing subkey.
+Use [Sign Data](#sign-data) to sign data with either the _first_ unexpired signing subkey added to the master key, if any, or the master key itself (which is configured by default to be able to sign).
 
 ### Verify Signed Data with Subkey
 

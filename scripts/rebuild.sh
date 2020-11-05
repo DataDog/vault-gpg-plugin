@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e -x
+set -xeuo pipefail
 
 go mod vendor
 go build -o pkg/vault-gpg-plugin
