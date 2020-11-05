@@ -198,11 +198,7 @@ func (b *backend) pathSubkeyList(ctx context.Context, req *logical.Request, data
 		keyIDs = append(keyIDs, subkey.PublicKey.KeyIdString())
 	}
 
-	return &logical.Response{
-		Data: map[string]interface{}{
-			"key_ids": keyIDs,
-		},
-	}, nil
+	return logical.ListResponse(keyIDs), nil
 }
 
 func (b *backend) pathSubkeyRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
