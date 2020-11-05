@@ -94,6 +94,12 @@ function without_root {
     set -e
 }
 
+# Setup vault
+go mod vendor
+go build -o pkg/vault-gpg-plugin
+vault server -dev -dev-root-token-id=root -dev-plugin-dir=pkg &
+VAULT_PID=$!
+
 # Login as root and see if we can do everything
 vault login root
 vault secrets disable $MOUNT_POINT
@@ -113,3 +119,6 @@ vault login root
 vault delete $MOUNT_POINT/keys/$NAME/subkeys/$KEYID
 # Delete master key
 vault delete $MOUNT_POINT/keys/$NAME
+
+# Shutdown vault.
+kill -2 $VAULT_PID
