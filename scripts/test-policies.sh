@@ -41,24 +41,54 @@ function with_root {
 }
 
 function without_root {
-    # Allow the following operations to fail.
+    # Allow all of the following operations to fail.
     set +e
 
     # Create master key
-    vault write $MOUNT_POINT/keys/$NAME exportable=true
+    if vault write $MOUNT_POINT/keys/$NAME exportable=true; then
+        echo "Created master key!"
+        exit 1
+    fi
+
     # Read master key
-    vault read $MOUNT_POINT/keys/$NAME
+    if vault read $MOUNT_POINT/keys/$NAME; then
+        echo "Read master key!"
+        exit 2
+    fi
+
     # List keys
-    vault list $MOUNT_POINT/keys
+    if vault list $MOUNT_POINT/keys; then
+        echo "Listed keys!"
+        exit 3
+    fi
+
     # Export master key
-    vault read $MOUNT_POINT/export/$NAME
+    if vault read $MOUNT_POINT/export/$NAME; then
+        echo "Exported master key!"
+        exit 4
+    fi
 
     # Create a signing subkey
-    local keyid=$(vault write -f $MOUNT_POINT/keys/$NAME/subkeys -format=json | jq -rC '.data.key_id')
+    # https://unix.stackexchange.com/a/73180
+    # https://superuser.com/a/1103711
+    local keyid;
+    keyid=$(vault write -f $MOUNT_POINT/keys/$NAME/subkeys -format=json | jq -rC '.data.key_id')
+    if [ $? -eq 0 ]; then
+        echo "Created subkey!"
+        exit 5
+    fi
+
     # Read the subkey
-    vault read $MOUNT_POINT/keys/$NAME/subkeys/$keyid
+    if vault read $MOUNT_POINT/keys/$NAME/subkeys/$keyid; then
+        echo "Read subkey!"
+        exit 6
+    fi
+
     # List subkeys
-    vault list $MOUNT_POINT/keys/$NAME/subkeys
+    if vault list $MOUNT_POINT/keys/$NAME/subkeys; then
+        echo "Listed subkeys!"
+        exit 7
+    fi
 
     # Disallow failures going forward.
     set -e
