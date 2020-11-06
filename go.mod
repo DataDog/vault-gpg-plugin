@@ -1,4 +1,4 @@
-module github.com/trishankatdatadog/vault-gpg-plugin
+module github.com/DataDog/vault-gpg-plugin
 
 go 1.15
 
