@@ -101,6 +101,7 @@ vault server -dev -dev-root-token-id=root -dev-plugin-dir=pkg &
 VAULT_PID=$!
 
 # Login as root and see if we can do everything
+sleep 3
 vault login root
 vault secrets disable $MOUNT_POINT
 vault secrets enable $MOUNT_POINT

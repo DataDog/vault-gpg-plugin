@@ -1,4 +1,4 @@
-# Vault Plugin: GPG Secret Backend [![Build Status](https://github.com/trishankatdatadog/vault-gpg-plugin/workflows/CI/badge.svg)](https://github.com/trishankatdatadog/vault-gpg-plugin/actions?query=workflow%3ACI) [![Code coverage](https://codecov.io/gh/trishankatdatadog/vault-gpg-plugin/branch/master/graph/badge.svg)](https://codecov.io/gh/trishankatdatadog/vault-gpg-plugin)
+# Vault Plugin: GPG Secret Backend [![Build Status](https://github.com/DataDog/vault-gpg-plugin/workflows/CI/badge.svg)](https://github.com/DataDog/vault-gpg-plugin/actions?query=workflow%3ACI) [![Code coverage](https://codecov.io/gh/DataDog/vault-gpg-plugin/branch/master/graph/badge.svg)](https://codecov.io/gh/DataDog/vault-gpg-plugin)
 
 This is a standalone plugin for [HashiCorp Vault](https://www.github.com/hashicorp/vault).
 This plugin handles GPG operations on data-in-transit in a similar fashion to what the

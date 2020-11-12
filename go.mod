@@ -1,4 +1,4 @@
-module github.com/trishankatdatadog/vault-gpg-plugin
+module github.com/DataDog/vault-gpg-plugin
 
 go 1.15
 
@@ -10,4 +10,4 @@ require (
 	honnef.co/go/tools v0.0.0-20190523083050-ea95bdfd59fc
 )
 
-replace golang.org/x/crypto => github.com/DataDog/crypto v0.0.0-20201020222332-8da10552845c
+replace golang.org/x/crypto => github.com/DataDog/crypto v0.0.0-20201112115411-41db4ea0dd1c
