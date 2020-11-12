@@ -19,7 +19,7 @@ func TestBackend_CRUD(t *testing.T) {
 		"real_name":  "Vault",
 		"email":      "vault@example.com",
 		"comment":    "Comment",
-		"key_bits":   4096,
+		"key_bits":   2048,
 		"exportable": true,
 	}
 
@@ -53,16 +53,17 @@ func TestBackend_CRUDImportedKey(t *testing.T) {
 func TestBackend_Signing(t *testing.T) {
 	b, storage := getTestBackend(t)
 
+	const keyBits = 2048
 	keyData := map[string]interface{}{
 		"real_name": "Vault",
 		"email":     "vault@example.com",
 		"comment":   "Comment",
-		"key_bits":  2048,
+		"key_bits":  keyBits,
 	}
 	base64InputData := "bXkgc2VjcmV0IGRhdGEK"
 	otherBase64InputData := "c29tZSBvdGhlciBkYXRhCg=="
 	// NOTE: choose expiration time long enough that the key does not expire by the time we are done creating it.
-	sigExpiresAfterSeconds := 10
+	sigExpiresAfterSeconds := 1
 	keyExpiresAfterSeconds := 2 * sigExpiresAfterSeconds
 
 	// NOTE: every test uses a separate master key so that parallel tests do not affect each other.
@@ -105,7 +106,9 @@ func TestBackend_Signing(t *testing.T) {
 	t.Run("unexpiring signatures with unexpiring subkey", func(t *testing.T) {
 		masterName := "master3"
 		testAccStepCreateKey(t, b, storage, masterName, keyData, false)
-		subkeyRespData := testAccStepCreateSubkey(t, b, storage, masterName, map[string]interface{}{})
+		subkeyRespData := testAccStepCreateSubkey(t, b, storage, masterName, map[string]interface{}{
+			"key_bits": keyBits,
+		})
 		subkeyID := subkeyRespData["key_id"].(string)
 		testAccStepReadSubkey(t, b, storage, masterName, subkeyID)
 		signature := testAccStepSign(t, b, storage, masterName, map[string]interface{}{
@@ -125,7 +128,8 @@ func TestBackend_Signing(t *testing.T) {
 		masterName := "master4"
 		testAccStepCreateKey(t, b, storage, masterName, keyData, false)
 		testAccStepCreateSubkey(t, b, storage, masterName, map[string]interface{}{
-			"expires": keyExpiresAfterSeconds,
+			"key_bits": keyBits,
+			"expires":  keyExpiresAfterSeconds,
 		})
 		signature := testAccStepSign(t, b, storage, masterName, map[string]interface{}{
 			"input":   base64InputData,
@@ -147,7 +151,8 @@ func TestBackend_Signing(t *testing.T) {
 		masterName := "master5"
 		testAccStepCreateKey(t, b, storage, masterName, keyData, false)
 		testAccStepCreateSubkey(t, b, storage, masterName, map[string]interface{}{
-			"expires": 0, // subkey does not expire
+			"key_bits": keyBits,
+			"expires":  0, // subkey does not expire
 		})
 		signature := testAccStepSign(t, b, storage, masterName, map[string]interface{}{
 			"input":   base64InputData,

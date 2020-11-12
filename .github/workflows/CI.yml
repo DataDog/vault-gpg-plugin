@@ -22,7 +22,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: Unit and coverage tests
-        run: "go test -race -coverprofile='coverage.txt' -covermode=atomic -v ./gpg/"
+        run: "go test -race -covermode=atomic -v ./gpg/"
 
   static_analysis:
     runs-on: ubuntu-20.04
