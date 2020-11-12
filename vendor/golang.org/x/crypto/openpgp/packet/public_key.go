@@ -422,6 +422,10 @@ func (pk *PublicKey) parseEdDSA(r io.Reader) (err error) {
 	if _, err = pk.oid.ReadFrom(r); err != nil {
 		return
 	}
+	curveInfo := ecc.FindByOid(pk.oid)
+	if curveInfo == nil || curveInfo.SigAlgorithm != ecc.EdDSA {
+		return errors.UnsupportedError(fmt.Sprintf("unsupported oid: %x", pk.oid))
+	}
 	pk.p = new(encoding.MPI)
 	if _, err = pk.p.ReadFrom(r); err != nil {
 		return
@@ -813,7 +817,7 @@ func (pk *PublicKey) KeyExpired(sig *Signature, currentTime time.Time) bool {
 	if pk.CreationTime.After(currentTime) {
 		return true
 	}
-	if sig.KeyLifetimeSecs == nil {
+	if sig.KeyLifetimeSecs == nil || *sig.KeyLifetimeSecs == 0 {
 		return false
 	}
 	expiry := pk.CreationTime.Add(time.Duration(*sig.KeyLifetimeSecs) * time.Second)
