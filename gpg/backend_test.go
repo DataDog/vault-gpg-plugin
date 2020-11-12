@@ -63,7 +63,7 @@ func TestBackend_Signing(t *testing.T) {
 	base64InputData := "bXkgc2VjcmV0IGRhdGEK"
 	otherBase64InputData := "c29tZSBvdGhlciBkYXRhCg=="
 	// NOTE: choose expiration time long enough that the key does not expire by the time we are done creating it.
-	sigExpiresAfterSeconds := 1
+	sigExpiresAfterSeconds := 3
 	keyExpiresAfterSeconds := 2 * sigExpiresAfterSeconds
 
 	// NOTE: every test uses a separate master key so that parallel tests do not affect each other.
