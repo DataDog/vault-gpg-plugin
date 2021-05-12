@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '^1.15.0'
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@v1.5.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: Unit and coverage tests
